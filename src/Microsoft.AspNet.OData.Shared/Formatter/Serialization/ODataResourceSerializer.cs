@@ -1141,7 +1141,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             Contract.Assert(selectExpandNode != null);
             Contract.Assert(resourceContext != null);
 
-            if (selectExpandNode.SelectedNavigationProperties == null || resourceContext.Request.Method == "POST")
+            if (selectExpandNode.SelectedNavigationProperties == null || resourceContext.IsPostRequest)
             {
                 return;
             }
@@ -1663,7 +1663,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             Contract.Assert(resourceContext != null);
             Contract.Assert(writer != null);
 
-            if (resourceContext.Request.Method != "POST")
+            if (!resourceContext.IsPostRequest)
             {
                 return;
             }
@@ -1689,7 +1689,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             Contract.Assert(resourceContext != null);
             Contract.Assert(writer != null);
 
-            if (resourceContext.Request.Method != "POST")
+            if (!resourceContext.IsPostRequest)
             {
                 return;
             }
