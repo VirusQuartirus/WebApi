@@ -1455,8 +1455,6 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                 {
                     if (propertyNamesAndValues.ContainsKey(navigationProperty.Name))
                     {
-                        /*object obj = propertyNamesAndValues[navigationProperty.Name];
-                        yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, obj?.GetType());*/
                         object obj = propertyNamesAndValues[navigationProperty.Name];
 
                         if (obj != null)
