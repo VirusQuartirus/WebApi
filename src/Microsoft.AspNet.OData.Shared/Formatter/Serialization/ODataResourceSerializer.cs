@@ -1403,65 +1403,63 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
         {
             ISet<IEdmNavigationProperty> navigationProperties = selectExpandNode.SelectedNavigationProperties;
 
-            if (navigationProperties != null)
-            {
-                IEnumerable<string> changedProperties = null;
-                if (null != resourceContext.EdmObject && resourceContext.EdmObject is IDelta changedObject)
-                {
-                    changedProperties = changedObject.GetChangedPropertyNames();
-
-                    foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
-                    {
-                        if (changedProperties == null || changedProperties.Contains(navigationProperty.Name))
-                        {
-                            yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, typeof(IEdmChangedObject));
-                        }
-                    }
-                }
-                else if (null != resourceContext.ResourceInstance && resourceContext.ResourceInstance is IDelta deltaObject)
-                {
-                    changedProperties = deltaObject.GetChangedPropertyNames();
-                    dynamic delta = deltaObject;
-
-                    foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
-                    {
-                        Object obj = null;
-                        if (changedProperties == null || changedProperties.Contains(navigationProperty.Name) && delta.DeltaNestedResources.TryGetValue(navigationProperty.Name, out obj))
-                        {
-                            yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, obj.GetType());
-                        }
-                    }
-                }                
-            }
-        }
-
-        private IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> GetNestedNavigationProperties(SelectExpandNode selectExpandNode, ResourceContext resourceContext)
-        {
-            ISet<IEdmNavigationProperty> navigationProperties = selectExpandNode.SelectedNavigationProperties;
-
             if (navigationProperties == null)
             {
                 yield break;
             }
 
-            object instance = resourceContext.ResourceInstance;
-            PropertyInfo[] properties = instance.GetType().GetProperties();
-            Dictionary<string, object> propertyNamesAndValues = new Dictionary<string, object>();
+            IEnumerable<string> changedProperties = null;
 
-            foreach (PropertyInfo propertyInfo in properties)
+            if (null != resourceContext.EdmObject && resourceContext.EdmObject is IDelta changedObject)
             {
-                string name = propertyInfo.Name;
-                object value = propertyInfo.GetValue(instance);
-                propertyNamesAndValues.Add(name, value);
-            }
+                changedProperties = changedObject.GetChangedPropertyNames();
 
-            foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
-            {
-                if (propertyNamesAndValues.TryGetValue(navigationProperty.Name, out object obj))
+                foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
                 {
-                    if (obj != null)
+                    if (changedProperties == null || changedProperties.Contains(navigationProperty.Name))
+                    {
+                        yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, typeof(IEdmChangedObject));
+                    }
+                }
+            }
+            else if (null != resourceContext.ResourceInstance && resourceContext.ResourceInstance is IDelta deltaObject)
+            {
+                changedProperties = deltaObject.GetChangedPropertyNames();
+                dynamic delta = deltaObject;
+
+                foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
+                {
+                    Object obj = null;
+
+                    if (changedProperties == null || changedProperties.Contains(navigationProperty.Name) && delta.DeltaNestedResources.TryGetValue(navigationProperty.Name, out obj))
                     {
                         yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, obj.GetType());
+                    }
+                }
+            }
+            // Serializing nested navigation properties from a deep insert request.
+            // We currently don't deserialize Deep insert nested resources as Delta<T> but as T. If this was to change in the future, logic in this method will have to change.
+            else if (resourceContext.IsPostRequest)
+            {
+                object instance = resourceContext.ResourceInstance;
+                PropertyInfo[] properties = instance.GetType().GetProperties();
+                Dictionary<string, object> propertyNamesAndValues = new Dictionary<string, object>();
+
+                foreach (PropertyInfo propertyInfo in properties)
+                {
+                    string name = propertyInfo.Name;
+                    object value = propertyInfo.GetValue(instance);
+                    propertyNamesAndValues.Add(name, value);
+                }
+
+                foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
+                {
+                    if (propertyNamesAndValues.TryGetValue(navigationProperty.Name, out object obj))
+                    {
+                        if (obj != null)
+                        {
+                            yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, obj.GetType());
+                        }
                     }
                 }
             }
@@ -1667,7 +1665,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                 return;
             }
 
-            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNestedNavigationProperties(selectExpandNode, resourceContext);
+            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNavigationPropertiesToWrite(selectExpandNode, resourceContext);
 
             foreach (KeyValuePair<IEdmNavigationProperty, Type> navigationProperty in navigationProperties)
             {
@@ -1693,7 +1691,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                 return;
             }
 
-            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNestedNavigationProperties(selectExpandNode, resourceContext);
+            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNavigationPropertiesToWrite(selectExpandNode, resourceContext);
 
             foreach (KeyValuePair<IEdmNavigationProperty, Type> navigationProperty in navigationProperties)
             {
