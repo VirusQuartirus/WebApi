@@ -95,6 +95,14 @@ namespace Microsoft.AspNet.OData
             }
         }
 
+        internal bool IsPostRequest
+        {
+            get
+            {
+                return String.Equals(Request.Method, "post", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
         /// Gets or sets the <see cref="IEdmNavigationSource"/> to which this instance belongs.
         /// </summary>

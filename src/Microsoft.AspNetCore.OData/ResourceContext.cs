@@ -36,13 +36,5 @@ namespace Microsoft.AspNet.OData
                 SerializerContext.Request = value;
             }
         }
-
-        internal bool IsPostRequest
-        {
-            get
-            {
-                return Request.Method.ToLowerInvariant() == "post";
-            }
-        }
     }
 }

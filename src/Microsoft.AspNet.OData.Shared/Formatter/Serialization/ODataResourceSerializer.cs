@@ -647,7 +647,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                         WriteDynamicComplexProperties(resourceContext, writer);
                         WriteNavigationLinks(selectExpandNode, resourceContext, writer);
                         WriteExpandedNavigationProperties(selectExpandNode, resourceContext, writer);
-                        WriteNavigationPropertiesForDeepInsert(selectExpandNode, resourceContext, writer);
+                        WriteNestedNavigationProperties(selectExpandNode, resourceContext, writer);
                         WriteReferencedNavigationProperties(selectExpandNode, resourceContext, writer);
                         writer.WriteEnd();
                     }
@@ -690,7 +690,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                         await WriteDynamicComplexPropertiesAsync(resourceContext, writer);
                         await WriteNavigationLinksAsync(selectExpandNode, resourceContext, writer);
                         await WriteExpandedNavigationPropertiesAsync(selectExpandNode, resourceContext, writer);
-                        await WriteNavigationPropertiesForDeepInsertAsync(selectExpandNode, resourceContext, writer);
+                        await WriteNestedNavigationPropertiesAsync(selectExpandNode, resourceContext, writer);
                         await WriteReferencedNavigationPropertiesAsync(selectExpandNode, resourceContext, writer);
                         await writer.WriteEndAsync();
                     }
@@ -1435,9 +1435,15 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             }
         }
 
-        private IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> GetNavigationPropertiesForDeepInsert(SelectExpandNode selectExpandNode, ResourceContext resourceContext)
+        private IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> GetNestedNavigationProperties(SelectExpandNode selectExpandNode, ResourceContext resourceContext)
         {
             ISet<IEdmNavigationProperty> navigationProperties = selectExpandNode.SelectedNavigationProperties;
+
+            if (navigationProperties == null)
+            {
+                yield break;
+            }
+
             object instance = resourceContext.ResourceInstance;
             PropertyInfo[] properties = instance.GetType().GetProperties();
             Dictionary<string, object> propertyNamesAndValues = new Dictionary<string, object>();
@@ -1445,22 +1451,17 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             foreach (PropertyInfo propertyInfo in properties)
             {
                 string name = propertyInfo.Name;
-                object value = propertyInfo.GetValue(instance, null);
+                object value = propertyInfo.GetValue(instance);
                 propertyNamesAndValues.Add(name, value);
             }
 
-            if (navigationProperties != null)
+            foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
             {
-                foreach (IEdmNavigationProperty navigationProperty in navigationProperties)
+                if (propertyNamesAndValues.TryGetValue(navigationProperty.Name, out object obj))
                 {
-                    if (propertyNamesAndValues.ContainsKey(navigationProperty.Name))
+                    if (obj != null)
                     {
-                        object obj = propertyNamesAndValues[navigationProperty.Name];
-
-                        if (obj != null)
-                        {
-                            yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, obj.GetType());
-                        }
+                        yield return new KeyValuePair<IEdmNavigationProperty, Type>(navigationProperty, obj.GetType());
                     }
                 }
             }
@@ -1656,7 +1657,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             }
         }
 
-        private void WriteNavigationPropertiesForDeepInsert(SelectExpandNode selectExpandNode, ResourceContext resourceContext, ODataWriter writer)
+        private void WriteNestedNavigationProperties(SelectExpandNode selectExpandNode, ResourceContext resourceContext, ODataWriter writer)
         {
             Contract.Assert(resourceContext != null);
             Contract.Assert(writer != null);
@@ -1666,7 +1667,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                 return;
             }
 
-            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNavigationPropertiesForDeepInsert(selectExpandNode, resourceContext);
+            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNestedNavigationProperties(selectExpandNode, resourceContext);
 
             foreach (KeyValuePair<IEdmNavigationProperty, Type> navigationProperty in navigationProperties)
             {
@@ -1682,7 +1683,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             }
         }
 
-        private async Task WriteNavigationPropertiesForDeepInsertAsync(SelectExpandNode selectExpandNode, ResourceContext resourceContext, ODataWriter writer)
+        private async Task WriteNestedNavigationPropertiesAsync(SelectExpandNode selectExpandNode, ResourceContext resourceContext, ODataWriter writer)
         {
             Contract.Assert(resourceContext != null);
             Contract.Assert(writer != null);
@@ -1692,7 +1693,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                 return;
             }
 
-            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNavigationPropertiesForDeepInsert(selectExpandNode, resourceContext);
+            IEnumerable<KeyValuePair<IEdmNavigationProperty, Type>> navigationProperties = GetNestedNavigationProperties(selectExpandNode, resourceContext);
 
             foreach (KeyValuePair<IEdmNavigationProperty, Type> navigationProperty in navigationProperties)
             {
